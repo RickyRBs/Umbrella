@@ -3,98 +3,119 @@ using UnityEngine;
 public class UmbrellaController : MonoBehaviour
 {
     public float launchSpeed = 5f;
-    public GameObject player;  // If not set during instantiation, try to get it automatically
-    private Vector3 launchOrigin; // 起点
+    public GameObject player;
 
     public static UmbrellaController currentUmbrella;
 
     private Rigidbody rb;
+    private Vector3 launchOrigin;
     private bool isHovering = false;
+    private bool isReturning = false;
 
     void Start()
     {
-        launchOrigin = transform.position;
-        // Ensure only one umbrella exists at a time
+        // 确保只存在一把伞
         if (currentUmbrella != null)
         {
             Destroy(currentUmbrella.gameObject);
         }
         currentUmbrella = this;
 
-        // If player is not assigned, try to get it from UmbrellaInfo
         if (player == null && UmbrellaInfo.Instance != null)
         {
             player = UmbrellaInfo.Instance.player;
-            if (player == null)
-            {
-                Debug.LogWarning("UmbrellaController: Player retrieved from UmbrellaInfo is null!");
-            }
         }
 
         rb = GetComponent<Rigidbody>();
-        if (rb != null)
+
+        if (rb != null && Camera.main != null)
         {
             Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
             Vector3 launchDirection = ray.direction;
-            launchDirection.y = 0f; // 不让雨伞往上飞
+            launchDirection.y = 0f;
             launchDirection.Normalize();
 
             transform.rotation = Quaternion.LookRotation(launchDirection);
             rb.linearVelocity = launchDirection * launchSpeed;
+            launchOrigin = transform.position;
         }
     }
 
     void Update()
     {
-        // 停止飞行逻辑
-        if (!isHovering && Vector3.Distance(transform.position, launchOrigin) >= 25f)
+        if (rb == null || player == null) return;
+
+        // 自动停止：超过10米
+        if (!isHovering && !isReturning && Vector3.Distance(transform.position, launchOrigin) >= 10f)
         {
-            if (rb != null)
+            StopMovement();
+        }
+
+        // ⛔ 按 E 键控制行为
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            if (!isHovering && !isReturning)
             {
-                rb.linearVelocity = Vector3.zero;
-                rb.isKinematic = true;
-                isHovering = true;
+                StopMovement();
+            }
+            else if (isHovering && !isReturning)
+            {
+                ReturnToPlayer();
             }
         }
 
-        // 手动停止
-        if (Input.GetKeyDown(KeyCode.E) && !isHovering)
+        // ⏩ F 键传送玩家
+        if (Input.GetKeyDown(KeyCode.F))
         {
-            if (rb != null)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.isKinematic = true;
-                isHovering = true;
-            }
-        }
-
-        // 传送
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            Vector3 umbrellaPos = transform.position;
-            Debug.Log("T key pressed, teleporting player to umbrella position: " + umbrellaPos);
             if (player != null)
             {
                 CharacterController cc = player.GetComponent<CharacterController>();
-                if (cc != null)
-                    cc.enabled = false;
+                if (cc != null) cc.enabled = false;
 
-                player.transform.position = umbrellaPos;
+                player.transform.position = transform.position;
 
-                if (cc != null)
-                    cc.enabled = true;
+                if (cc != null) cc.enabled = true;
+
+                Destroy(gameObject);
             }
-            else
-            {
-                Debug.LogWarning("Teleport failed: player reference is null!");
-            }
+        }
+    }
+
+    void StopMovement()
+    {
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.isKinematic = true;
+            isHovering = true;
+        }
+    }
+
+    void ReturnToPlayer()
+    {
+        if (rb != null && player != null)
+        {
+            rb.isKinematic = false;
+            Vector3 returnDir = (player.transform.position - transform.position).normalized;
+            returnDir.y = 0f;
+            rb.linearVelocity = returnDir * launchSpeed;
+
+            isReturning = true;
+            isHovering = false;
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        // 检测是否触碰特定碰撞箱（Tag = "UmbrellaTarget"）
+        if (other.CompareTag("UmbrellaTarget"))
+        {
             Destroy(gameObject);
         }
     }
 
     private void OnDestroy()
     {
-        // Clear static reference if the current instance is destroyed
         if (currentUmbrella == this)
         {
             currentUmbrella = null;
