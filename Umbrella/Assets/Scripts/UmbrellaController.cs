@@ -4,6 +4,7 @@ public class UmbrellaController : MonoBehaviour
 {
     public float launchSpeed = 5f;
     public GameObject player;  // If not set during instantiation, try to get it automatically
+    private Vector3 launchOrigin; // 起点
 
     public static UmbrellaController currentUmbrella;
 
@@ -12,6 +13,7 @@ public class UmbrellaController : MonoBehaviour
 
     void Start()
     {
+        launchOrigin = transform.position;
         // Ensure only one umbrella exists at a time
         if (currentUmbrella != null)
         {
@@ -34,6 +36,9 @@ public class UmbrellaController : MonoBehaviour
         {
             Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
             Vector3 launchDirection = ray.direction;
+            launchDirection.y = 0f; // 不让雨伞往上飞
+            launchDirection.Normalize();
+
             transform.rotation = Quaternion.LookRotation(launchDirection);
             rb.linearVelocity = launchDirection * launchSpeed;
         }
@@ -41,6 +46,18 @@ public class UmbrellaController : MonoBehaviour
 
     void Update()
     {
+        // 停止飞行逻辑
+        if (!isHovering && Vector3.Distance(transform.position, launchOrigin) >= 25f)
+        {
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.isKinematic = true;
+                isHovering = true;
+            }
+        }
+
+        // 手动停止
         if (Input.GetKeyDown(KeyCode.E) && !isHovering)
         {
             if (rb != null)
@@ -51,24 +68,21 @@ public class UmbrellaController : MonoBehaviour
             }
         }
 
+        // 传送
         if (Input.GetKeyDown(KeyCode.T))
         {
             Vector3 umbrellaPos = transform.position;
             Debug.Log("T key pressed, teleporting player to umbrella position: " + umbrellaPos);
             if (player != null)
             {
-                // Temporarily disable CharacterController if the player has one
                 CharacterController cc = player.GetComponent<CharacterController>();
                 if (cc != null)
-                {
                     cc.enabled = false;
-                }
+
                 player.transform.position = umbrellaPos;
-                Debug.Log("Teleport successful, player's new position: " + player.transform.position);
+
                 if (cc != null)
-                {
                     cc.enabled = true;
-                }
             }
             else
             {
