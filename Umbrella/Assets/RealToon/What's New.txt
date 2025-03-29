@@ -1,0 +1,38 @@
+What's New to RealToon V5.0.11 (February 2025)
+=====================================
+
+[New]
+- (ShadowT - SDF Mode Helper - New Options) (Built-In, URP and HDRP)
+*Forward Inverted - Invert Forward/Front position of the object.
+*Right Inverted - Invert Right position of the object.
+*Light Threshold - The amount of light.
+
+- RealToon Shader Cache (New Tool) (Built-In, URP and HDRP)
+"To reduce or clear cached RealToon Shader."
+"Useful for after update RealToon Shader or Re-import RealToon Shader."
+"To access this, "Window -> RealToon -> RealToon Shader Cache"."
+
+- Support URP Dynamic Lightmap. (Unity 6.0 to Latest)
+- Support URP Deferred+. (Unity 6.1 to Latest)
+- Support Unity 6.1
+- Early add support for the later Unity 6.2.
+
+
+[Changes]
+- RealToon Shader (SRP) packages has been reorganized, separate Unity 6 folder and Older/Previous Unity version folders.
+- (URP 10 - 11) and (HDRP 10 - 11) has been removed, not supported anymore.
+
+
+[Fixed]
+- Gloss feature "Unity_WorldToObject" error. (URP)
+- Overlap Sky & RayTracing Reflection. (HDRP)
+- RealToon HDRP Example missing Global Volume and overexposed. (HDRP)
+- URP Lightmap errors. (URP)
+
+====================================
+
+#Read the "Change - Fix Log.txt." file for previous updates.
+#This update supports Unity 5, 2017, 2018, 2019, 2020, 2022, 2023, Unity 6 and future unity versions.
+
+[Other Notes]
+* If you encounter some problems or need help just contact by email.
