@@ -44,6 +44,13 @@ public class UmbrellaSystem : MonoBehaviour
     private const float movementCheckInterval = 0.5f;
     private const float movementThreshold = 0.01f; // 位置变化小于此值视为静止
 
+
+    //audio 区域
+    public AudioSource Charge;
+    public AudioSource Fly;
+    public AudioSource Close;
+    public AudioSource Open;
+
     void Start()
     {
         if (umbrellaObject != null)
@@ -69,14 +76,19 @@ public class UmbrellaSystem : MonoBehaviour
             {
                 isCharging = true;
                 chargeTimer = 0f;
+                Charge.Play();
+
             }
+            
             if (isCharging && Input.GetMouseButton(0))
             {
                 chargeTimer += Time.deltaTime;
                 chargeTimer = Mathf.Min(chargeTimer, maxChargeTime);
+                
             }
             if (Input.GetMouseButtonUp(0) && isCharging)
             {
+                
                 if (chargeTimer < 0.5f)
                 {
                     DropUmbrella();
@@ -87,6 +99,7 @@ public class UmbrellaSystem : MonoBehaviour
                     LaunchUmbrella(chargeRatio);
                 }
                 isCharging = false;
+                Charge.Stop();
             }
         }
         else
@@ -100,6 +113,7 @@ public class UmbrellaSystem : MonoBehaviour
                     TriggerUmbrellaAnim(recallTriggerName);
                     umbrellaRb.linearVelocity = Vector3.zero;
                     umbrellaRb.isKinematic = true;
+                    Close.Play();
                 }
                 teleportCoroutine = StartCoroutine(TeleportAndCloseUmbrella());
             }
@@ -143,12 +157,14 @@ public class UmbrellaSystem : MonoBehaviour
                 float distanceMoved = Vector3.Distance(umbrellaObject.transform.position, lastPosition);
                 isUmbrellaMoving = distanceMoved > movementThreshold;
                 lastPosition = umbrellaObject.transform.position;
+                
                 movementCheckTimer = 0f;
             }
         }
         else
         {
             isUmbrellaMoving = false;
+            
         }
     }
 
@@ -169,7 +185,11 @@ public class UmbrellaSystem : MonoBehaviour
     // 发射伞：将伞传送到玩家位置后，根据摄像机方向施加发射力度
     void LaunchUmbrella(float chargeRatio)
     {
-        umbrellaObject.transform.position = player.transform.position;
+        Fly.Play();
+        Open.Play();
+        // 将伞位置设为玩家位置向上偏移 3 个单位
+        Vector3 launchPos = player.transform.position + Vector3.up * 3;
+        umbrellaObject.transform.position = launchPos;
         umbrellaObject.SetActive(true);
         currentState = UmbrellaState.Launched;
         if (umbrellaRb == null)
@@ -194,13 +214,13 @@ public class UmbrellaSystem : MonoBehaviour
 
         TriggerUmbrellaAnim(launchTriggerName);
     }
-
     // 停止伞的飞行，进入悬停状态
     void StopUmbrella()
     {
         if (umbrellaRb != null)
         {
             
+
             umbrellaRb.linearVelocity = Vector3.zero;
             umbrellaRb.isKinematic = true;
             currentState = UmbrellaState.Hovering;
