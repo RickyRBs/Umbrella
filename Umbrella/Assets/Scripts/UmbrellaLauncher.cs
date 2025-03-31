@@ -232,7 +232,7 @@ public class UmbrellaSystem : MonoBehaviour
     {
         currentState = UmbrellaState.Closing;
         TriggerUmbrellaAnim(recallTriggerName);
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(1.2f);
         umbrellaObject.SetActive(false);
         currentState = UmbrellaState.Inactive;
     }
@@ -255,19 +255,28 @@ public class UmbrellaSystem : MonoBehaviour
     // 延迟1秒后传送玩家到伞的位置，传送时停止伞的运动，并播放收伞动画后关闭伞
     IEnumerator TeleportAndCloseUmbrella()
     {
-        yield return new WaitForSeconds(1f);
+        // 等待0.5秒，让玩家感觉到延迟
+        yield return new WaitForSeconds(0.5f);
 
-        // 传送玩家
-        CharacterController cc = player.GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;
-        player.transform.position = umbrellaObject.transform.position;
-        if (cc != null) cc.enabled = true;
-
-        // 播放收伞动画并关闭伞
+        // 触发收伞动画
         TriggerUmbrellaAnim(recallTriggerName);
-        yield return new WaitForSeconds(1f);
+
+        // 再等待0.5秒，让动画有点反馈时间
+        yield return new WaitForSeconds(0.5f);
+
+        // 记录伞的位置（传送目标）
+        Vector3 teleportPos = umbrellaObject.transform.position;
+
+        // 立即隐藏伞，防止落地时遮挡视野
         umbrellaObject.SetActive(false);
         currentState = UmbrellaState.Inactive;
+
+        // 传送玩家到记录的位置
+        CharacterController cc = player.GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+        player.transform.position = teleportPos;
+        if (cc != null) cc.enabled = true;
+
         teleportCoroutine = null;
     }
 
