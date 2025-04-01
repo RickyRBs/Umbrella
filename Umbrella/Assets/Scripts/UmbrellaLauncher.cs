@@ -9,11 +9,14 @@ public class UmbrellaSystem : MonoBehaviour
 
     [Header("Umbrella Settings")]
     public GameObject umbrellaObject;       // 场上唯一的伞（初始时应为 Inactive）
+    public GameObject umbrellaPreviewObject; // 新增的预览伞对象
+    public GameObject shortPressDropPoint;    // 短按落伞位置
     public float launchSpeed = 10f;           // 发射时的最大速度
     public float accelerationTime = 10f;      // 动态加速时间
     public float maxDistance = 25f;           // 最大飞行距离
     private float maxDistanceThisShot = 0f;   // 本次发射的最大距离
-    public GameObject player;               // 玩家对象
+    public GameObject umbrellaLaunchPoint;               // 玩家对象
+    public GameObject PlayerforTranport; // 传送的目标对象
 
     [Header("Animation")]
     public List<Animator> umbrellaAnimators;    // 需要控制的 Animator 列表
@@ -23,6 +26,11 @@ public class UmbrellaSystem : MonoBehaviour
     public string recallTriggerName = "close";    // 关闭动画的 Trigger 名称
 
     public Image chargeProgressBar;
+
+    public GameObject landingMarker;
+    public int predictionSteps = 30;
+    public float timeStep = 0.1f;
+    public LayerMask collisionMask;
 
     private UmbrellaState currentState = UmbrellaState.Inactive;
     private Rigidbody umbrellaRb;
@@ -44,12 +52,14 @@ public class UmbrellaSystem : MonoBehaviour
     private const float movementCheckInterval = 0.5f;
     private const float movementThreshold = 0.01f; // 位置变化小于此值视为静止
 
-
     //audio 区域
     public AudioSource Charge;
     public AudioSource Fly;
     public AudioSource Close;
     public AudioSource Open;
+
+    private bool isPreviewing = false; // 新增字段
+    private float previewChargeRatio = 0f; // 新增字段
 
     void Start()
     {
@@ -58,6 +68,7 @@ public class UmbrellaSystem : MonoBehaviour
             umbrellaRb = umbrellaObject.GetComponent<Rigidbody>();
             // 初始时隐藏伞
             umbrellaObject.SetActive(false);
+            umbrellaPreviewObject.SetActive(false); // 新增行，隐藏预览伞
             currentState = UmbrellaState.Inactive;
             lastPosition = umbrellaObject.transform.position;
         }
@@ -75,16 +86,29 @@ public class UmbrellaSystem : MonoBehaviour
             if (Input.GetMouseButtonDown(0))
             {
                 isCharging = true;
+                isPreviewing = true; // 进入预览状态
                 chargeTimer = 0f;
                 Charge.Play();
-
             }
             
             if (isCharging && Input.GetMouseButton(0))
             {
                 chargeTimer += Time.deltaTime;
                 chargeTimer = Mathf.Min(chargeTimer, maxChargeTime);
-                
+
+                float chargeRatio = Mathf.Clamp01((chargeTimer - 0.5f) / (maxChargeTime - 0.5f));
+                previewChargeRatio = chargeRatio; // 动态赋值
+                Vector3 dir = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)).direction;
+                dir.y = 0f;
+                dir.Normalize();
+                Vector3 velocity = dir * launchSpeed * chargeRatio;
+
+
+                ShowLandingMarker(umbrellaLaunchPoint.transform.position + Vector3.up * 3, velocity, chargeRatio);
+                // if (chargeTimer >= 0.5f) // 新增判断
+                // {
+                //     ShowLandingMarker(umbrellaLaunchPoint.transform.position + Vector3.up * 3, velocity, chargeRatio);
+                // }
             }
             if (Input.GetMouseButtonUp(0) && isCharging)
             {
@@ -99,8 +123,19 @@ public class UmbrellaSystem : MonoBehaviour
                     LaunchUmbrella(chargeRatio);
                 }
                 isCharging = false;
+                isPreviewing = false; // 退出预览状态
+                umbrellaPreviewObject.SetActive(false); // 隐藏预览伞
                 Charge.Stop();
+                if (landingMarker != null)
+                    landingMarker.SetActive(false);
             }
+        }
+        else if (isPreviewing) // 如果是预览状态，实时更新伞的位置
+        {
+            Vector3 dir = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)).direction;
+            dir.y = 0f;
+            dir.Normalize();
+            umbrellaPreviewObject.transform.position = umbrellaLaunchPoint.transform.position + Vector3.up * 3 + dir * launchSpeed * previewChargeRatio; // 使用预览伞
         }
         else
         {
@@ -164,14 +199,13 @@ public class UmbrellaSystem : MonoBehaviour
         else
         {
             isUmbrellaMoving = false;
-            
         }
     }
 
     // 直接放下伞，不施加发射力度
     void DropUmbrella()
     {
-        umbrellaObject.transform.position = player.transform.position;
+        umbrellaObject.transform.position = shortPressDropPoint.transform.position;
         umbrellaObject.SetActive(true);
         currentState = UmbrellaState.Hovering;
         TriggerUmbrellaAnim(launchTriggerName);
@@ -180,6 +214,8 @@ public class UmbrellaSystem : MonoBehaviour
             umbrellaRb.linearVelocity = Vector3.zero;
             umbrellaRb.isKinematic = true;
         }
+        if (landingMarker != null)
+            landingMarker.SetActive(false);
     }
 
     // 发射伞：将伞传送到玩家位置后，根据摄像机方向施加发射力度
@@ -188,7 +224,7 @@ public class UmbrellaSystem : MonoBehaviour
         Fly.Play();
         Open.Play();
         // 将伞位置设为玩家位置向上偏移 3 个单位
-        Vector3 launchPos = player.transform.position + Vector3.up * 3;
+        Vector3 launchPos = umbrellaLaunchPoint.transform.position + Vector3.up * 3;
         umbrellaObject.transform.position = launchPos;
         umbrellaObject.SetActive(true);
         currentState = UmbrellaState.Launched;
@@ -213,14 +249,14 @@ public class UmbrellaSystem : MonoBehaviour
         maxDistanceThisShot = maxDistance * chargeRatio;
 
         TriggerUmbrellaAnim(launchTriggerName);
+        if (landingMarker != null)
+            landingMarker.SetActive(false);
     }
     // 停止伞的飞行，进入悬停状态
     void StopUmbrella()
     {
         if (umbrellaRb != null)
         {
-            
-
             umbrellaRb.linearVelocity = Vector3.zero;
             umbrellaRb.isKinematic = true;
             currentState = UmbrellaState.Hovering;
@@ -272,9 +308,9 @@ public class UmbrellaSystem : MonoBehaviour
         currentState = UmbrellaState.Inactive;
 
         // 传送玩家到记录的位置
-        CharacterController cc = player.GetComponent<CharacterController>();
+        CharacterController cc = PlayerforTranport.GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
-        player.transform.position = teleportPos;
+        PlayerforTranport.transform.position = teleportPos;
         if (cc != null) cc.enabled = true;
 
         teleportCoroutine = null;
@@ -290,6 +326,42 @@ public class UmbrellaSystem : MonoBehaviour
                 anim.SetTrigger(triggerName);
                 Debug.Log($"Triggered '{triggerName}' on {anim.gameObject.name}");
             }
+        }
+    }
+
+    void ShowLandingMarker(Vector3 startPos, Vector3 initialVelocity, float chargeRatio)
+    {
+        Debug.Log("⚡ 开始预测落点啦！StartPos: " + startPos + "  Velocity: " + initialVelocity);
+
+        Vector3 currentPos = startPos;
+        Vector3 currentVel = initialVelocity;
+        float totalDistance = 0f;
+
+        for (int i = 0; i < predictionSteps; i++)
+        {
+            currentVel += Physics.gravity * timeStep;
+            Vector3 nextPos = currentPos + currentVel * timeStep;
+            totalDistance += Vector3.Distance(currentPos, nextPos);
+
+            if (totalDistance > maxDistance * chargeRatio)
+            {
+                break;
+            }
+
+            Debug.DrawLine(currentPos, nextPos, Color.red, 1f); // Scene 里可见轨迹线（需开启 Gizmos）
+
+            currentPos = nextPos;
+        }
+
+        if (landingMarker != null)
+        {
+            landingMarker.SetActive(true);
+            landingMarker.transform.position = currentPos;
+            Debug.Log("📍 设置了 marker 的位置！");
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ landingMarker 是空的！");
         }
     }
 }
