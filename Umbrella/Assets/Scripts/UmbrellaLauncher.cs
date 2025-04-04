@@ -11,8 +11,8 @@ public class UmbrellaSystem : MonoBehaviour
     public GameObject umbrellaObject;       // 场上唯一的伞（初始时应为 Inactive）
     public GameObject umbrellaPreviewObject; // 新增的预览伞对象
     public GameObject shortPressDropPoint;    // 短按落伞位置
-    public float launchSpeed = 10f;           // 发射时的最大速度
-    public float accelerationTime = 10f;      // 动态加速时间
+    public float launchSpeed = 50f;           // 发射时的最大速度
+    public float accelerationTime = 0.3f;      // 动态加速时间
     public float maxDistance = 25f;           // 最大飞行距离
     private float maxDistanceThisShot = 0f;   // 本次发射的最大距离
     public GameObject umbrellaLaunchPoint;               // 玩家对象
@@ -27,10 +27,20 @@ public class UmbrellaSystem : MonoBehaviour
 
     public Image chargeProgressBar;
 
+    [Header("Trajectory Prediction")]
     public GameObject landingMarker;
+    public GameObject landingMarkerOriginPoint; // 轨迹预测的发射起点 
     public int predictionSteps = 30;
-    public float timeStep = 0.1f;
-    public LayerMask collisionMask;
+    public float predictionTimeStep = 0.1f;    // 重命名为专用于预测的时间步长
+    public LayerMask predictionCollisionMask;  // 重命名为预测专用碰撞层
+    public bool showDebugTrajectory = true;    // 是否显示调试轨迹线
+    public Color trajectoryColor = Color.red;  // 轨迹线颜色
+    public bool useLinearProjection = true;    // 新增：是否使用直线投影（无重力）
+    public float fixedProjectionHeight = 0f;   // 新增：固定投影高度（0表示使用起点高度）
+
+    [Header("Actual Launch Physics")]
+    public float actualGravityScale = 1.0f;    // 实际发射时的重力比例调节
+    public bool useUnityPhysics = true;        // 是否使用Unity内置物理引擎
 
     private UmbrellaState currentState = UmbrellaState.Inactive;
     private Rigidbody umbrellaRb;
@@ -98,17 +108,17 @@ public class UmbrellaSystem : MonoBehaviour
 
                 float chargeRatio = Mathf.Clamp01((chargeTimer - 0.5f) / (maxChargeTime - 0.5f));
                 previewChargeRatio = chargeRatio; // 动态赋值
-                Vector3 dir = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)).direction;
-                dir.y = 0f;
-                dir.Normalize();
-                Vector3 velocity = dir * launchSpeed * chargeRatio;
-
-
-                ShowLandingMarker(umbrellaLaunchPoint.transform.position + Vector3.up * 3, velocity, chargeRatio);
-                // if (chargeTimer >= 0.5f) // 新增判断
-                // {
-                //     ShowLandingMarker(umbrellaLaunchPoint.transform.position + Vector3.up * 3, velocity, chargeRatio);
-                // }
+                
+                // 获取预测方向和起点
+                Vector3 predictionDir = GetPredictionDirection(); // 确保在直线模式下y=0
+                Vector3 predictionOrigin = GetPredictionOrigin();
+                Vector3 predictionVelocity = predictionDir * launchSpeed * chargeRatio;
+                
+                // 显示轨迹预测，独立计算
+                ShowLandingMarker(predictionOrigin, predictionVelocity, chargeRatio);
+                
+                // 使用新的稳定方法更新预览伞
+                UpdatePreviewUmbrella(predictionOrigin, predictionDir, chargeTimer >= 0.5f && isPreviewing);
             }
             if (Input.GetMouseButtonUp(0) && isCharging)
             {
@@ -132,10 +142,9 @@ public class UmbrellaSystem : MonoBehaviour
         }
         else if (isPreviewing) // 如果是预览状态，实时更新伞的位置
         {
-            Vector3 dir = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)).direction;
-            dir.y = 0f;
-            dir.Normalize();
-            umbrellaPreviewObject.transform.position = umbrellaLaunchPoint.transform.position + Vector3.up * 3 + dir * launchSpeed * previewChargeRatio; // 使用预览伞
+            Vector3 dir = GetPredictionDirection(); // 使用预测方向，而不是发射方向
+            Vector3 pos = GetPredictionOrigin();    // 使用预测起点
+            UpdatePreviewUmbrella(pos, dir, true);  // 使用更稳定的方法更新
         }
         else
         {
@@ -223,20 +232,29 @@ public class UmbrellaSystem : MonoBehaviour
     {
         Fly.Play();
         Open.Play();
-        // 将伞位置设为玩家位置向上偏移 3 个单位
-        Vector3 launchPos = umbrellaLaunchPoint.transform.position + Vector3.up * 3;
+        
+        // 使用实际发射起点和方向，与预测分离
+        Vector3 launchPos = GetLaunchOrigin();
+        Vector3 direction = GetLaunchDirection();
+        
         umbrellaObject.transform.position = launchPos;
         umbrellaObject.SetActive(true);
         currentState = UmbrellaState.Launched;
+        
         if (umbrellaRb == null)
             umbrellaRb = umbrellaObject.GetComponent<Rigidbody>();
+            
         umbrellaRb.isKinematic = false;
-
-        // 获取摄像机中心的射线方向
-        Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
-        Vector3 direction = ray.direction;
-        direction.y = 0f;
-        direction.Normalize();
+        
+        // 可选:修改实际重力
+        if (!useUnityPhysics && actualGravityScale != 1.0f)
+        {
+            umbrellaRb.useGravity = false; // 停用Unity重力，使用自定义重力
+        }
+        else
+        {
+            umbrellaRb.useGravity = true;
+        }
 
         umbrellaObject.transform.rotation = Quaternion.LookRotation(direction);
         launchOrigin = umbrellaObject.transform.position;
@@ -251,7 +269,11 @@ public class UmbrellaSystem : MonoBehaviour
         TriggerUmbrellaAnim(launchTriggerName);
         if (landingMarker != null)
             landingMarker.SetActive(false);
+        
+        // 隐藏所有轨迹预测标记
+        HideTrajectoryMarkers();
     }
+
     // 停止伞的飞行，进入悬停状态
     void StopUmbrella()
     {
@@ -329,39 +351,226 @@ public class UmbrellaSystem : MonoBehaviour
         }
     }
 
+    // 为轨迹预测获取发射方向 - 确保与实际发射完全一致
+    private Vector3 GetPredictionDirection()
+    {
+        Vector3 dir = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)).direction;
+        // 在直线投影模式下，保持y=0使其水平方向
+        if (useLinearProjection)
+            dir.y = 0f;
+        dir.Normalize();
+        return dir;
+    }
+    
+    // 为轨迹预测获取发射起点
+    private Vector3 GetPredictionOrigin()
+    {
+        // 直接使用实际发射起点，确保一致性
+        if (landingMarkerOriginPoint != null)
+            return landingMarkerOriginPoint.transform.position;
+        return GetLaunchOrigin();
+    }
+    
+    // 为实际发射获取方向
+    private Vector3 GetLaunchDirection()
+    {
+        Vector3 dir = Camera.main.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0)).direction;
+        dir.y = 0f;
+        dir.Normalize();
+        return dir;
+    }
+    
+    // 为实际发射获取起点
+    private Vector3 GetLaunchOrigin()
+    {
+        return umbrellaLaunchPoint.transform.position + Vector3.up * 3;
+    }
+
+    // 隐藏所有轨迹标记
+    private void HideTrajectoryMarkers()
+    {
+        if (landingMarker != null)
+            landingMarker.SetActive(false);
+    }
+    
+    // 自定义物理更新，可覆盖Unity原生物理
+    void FixedUpdate()
+    {
+        // 如果选择不使用Unity物理，我们可以在这里实现自定义物理
+        if (!useUnityPhysics && umbrellaRb != null && !umbrellaRb.isKinematic && umbrellaObject.activeSelf)
+        {
+            // 应用自定义重力
+            umbrellaRb.AddForce(Physics.gravity * actualGravityScale, ForceMode.Acceleration);
+        }
+    }
+    
+    // 分离的轨迹预测系统
     void ShowLandingMarker(Vector3 startPos, Vector3 initialVelocity, float chargeRatio)
     {
-        Debug.Log("⚡ 开始预测落点啦！StartPos: " + startPos + "  Velocity: " + initialVelocity);
-
-        Vector3 currentPos = startPos;
-        Vector3 currentVel = initialVelocity;
-        float totalDistance = 0f;
-
-        for (int i = 0; i < predictionSteps; i++)
-        {
-            currentVel += Physics.gravity * timeStep;
-            Vector3 nextPos = currentPos + currentVel * timeStep;
-            totalDistance += Vector3.Distance(currentPos, nextPos);
-
-            if (totalDistance > maxDistance * chargeRatio)
-            {
-                break;
-            }
-
-            Debug.DrawLine(currentPos, nextPos, Color.red, 1f); // Scene 里可见轨迹线（需开启 Gizmos）
-
-            currentPos = nextPos;
-        }
-
-        if (landingMarker != null)
+        if (landingMarker == null && !showDebugTrajectory)
+            return;
+            
+        List<Vector3> trajectoryPoints = PredictTrajectory(startPos, initialVelocity, chargeRatio);
+        
+        if (trajectoryPoints.Count > 0 && landingMarker != null)
         {
             landingMarker.SetActive(true);
-            landingMarker.transform.position = currentPos;
-            Debug.Log("📍 设置了 marker 的位置！");
+            landingMarker.transform.position = trajectoryPoints[trajectoryPoints.Count - 1];
+            
+            // 仅在调试模式启用时输出日志
+            if (showDebugTrajectory && Time.frameCount % 30 == 0) // 每30帧输出一次
+                Debug.Log("📍 Marker位置: " + landingMarker.transform.position);
         }
-        else
+    }
+    
+    // 纯粹的轨迹预测逻辑，无临时对象创建
+    private List<Vector3> PredictTrajectory(Vector3 startPos, Vector3 initialVelocity, float chargeRatio)
+    {
+        List<Vector3> points = new List<Vector3>();
+        points.Add(startPos);
+        
+        // 如果使用直线投影，就使用简化的直线计算
+        if (useLinearProjection)
         {
-            Debug.LogWarning("⚠️ landingMarker 是空的！");
+            Vector3 direction = initialVelocity.normalized;
+            float distance = maxDistance * chargeRatio;  // 直接使用最大距离乘以比率
+            
+            // 使用更精细的步长绘制轨迹
+            int steps = predictionSteps;
+            float stepSize = distance / steps;
+            
+            for (int i = 1; i <= steps; i++)
+            {
+                float currentDistance = i * stepSize;
+                Vector3 nextPoint = startPos + direction * currentDistance;
+                
+                // 应用固定高度
+                if (fixedProjectionHeight != 0)
+                {
+                    nextPoint.y = fixedProjectionHeight;
+                }
+                
+                // 精确碰撞检测
+                RaycastHit hit;
+                if (i > 1 && Physics.Linecast(points[points.Count-1], nextPoint, out hit, predictionCollisionMask))
+                {
+                    points.Add(hit.point);
+                    break;
+                }
+                
+                // 绘制调试线
+                if (showDebugTrajectory && i > 1)
+                {
+                    Debug.DrawLine(points[points.Count-1], nextPoint, trajectoryColor, 0.1f);
+                }
+                
+                points.Add(nextPoint);
+            }
+            
+            return points;
+        }
+        
+        // 抛物线投影 - 使用纯数学计算，不创建临时对象
+        Vector3 velocity = Vector3.zero;
+        Vector3 position = startPos;
+        float totalDistance = 0f;
+        float maxPredictedDistance = maxDistance * chargeRatio;
+        
+        // 模拟加速阶段
+        float simulationTime = 0f;
+        float simulationStep = predictionTimeStep;
+        
+        // 加速段模拟
+        while (simulationTime < accelerationTime && points.Count < predictionSteps)
+        {
+            float t = simulationTime / accelerationTime;
+            velocity = Vector3.Lerp(Vector3.zero, initialVelocity, t);
+            Vector3 newPosition = position + velocity * simulationStep;
+            
+            // 碰撞检测
+            RaycastHit hit;
+            if (points.Count > 0 && Physics.Linecast(position, newPosition, out hit, predictionCollisionMask))
+            {
+                points.Add(hit.point);
+                if (showDebugTrajectory)
+                    Debug.DrawLine(position, hit.point, trajectoryColor, 0.1f);
+                break;
+            }
+            
+            // 绘制轨迹
+            if (showDebugTrajectory && points.Count > 0)
+                Debug.DrawLine(position, newPosition, trajectoryColor, 0.1f);
+                
+            points.Add(newPosition);
+            
+            // 检查总距离
+            totalDistance += Vector3.Distance(position, newPosition);
+            if (totalDistance >= maxPredictedDistance)
+                break;
+                
+            position = newPosition;
+            simulationTime += simulationStep;
+        }
+        
+        // 加速结束后的匀速或受重力运动
+        if (totalDistance < maxPredictedDistance && points.Count < predictionSteps)
+        {
+            for (int i = 0; i < predictionSteps - points.Count; i++)
+            {
+                // 如果使用Unity物理，应用重力
+                if (useUnityPhysics)
+                    velocity += Physics.gravity * simulationStep * actualGravityScale;
+                
+                Vector3 newPosition = position + velocity * simulationStep;
+                
+                // 碰撞检测
+                RaycastHit hit;
+                if (Physics.Linecast(position, newPosition, out hit, predictionCollisionMask))
+                {
+                    points.Add(hit.point);
+                    if (showDebugTrajectory)
+                        Debug.DrawLine(position, hit.point, trajectoryColor, 0.1f);
+                    break;
+                }
+                
+                // 绘制轨迹
+                if (showDebugTrajectory)
+                    Debug.DrawLine(position, newPosition, trajectoryColor, 0.1f);
+                    
+                points.Add(newPosition);
+                
+                // 检查总距离
+                totalDistance += Vector3.Distance(position, newPosition);
+                if (totalDistance >= maxPredictedDistance)
+                    break;
+                    
+                position = newPosition;
+            }
+        }
+        
+        return points;
+    }
+    
+    // 改进预览伞的更新，彻底解决抖动问题
+    private void UpdatePreviewUmbrella(Vector3 position, Vector3 direction, bool activate)
+    {
+        if (umbrellaPreviewObject != null)
+        {
+            umbrellaPreviewObject.SetActive(activate);
+            if (activate)
+            {
+                // 防止位置抖动
+                if (Vector3.Distance(umbrellaPreviewObject.transform.position, position) > 0.05f)
+                {
+                    umbrellaPreviewObject.transform.position = position;
+                }
+                
+                // 防止旋转抖动
+                if (Quaternion.Angle(umbrellaPreviewObject.transform.rotation, Quaternion.LookRotation(direction)) > 2.0f)
+                {
+                    umbrellaPreviewObject.transform.rotation = Quaternion.LookRotation(direction);
+                }
+            }
         }
     }
 }

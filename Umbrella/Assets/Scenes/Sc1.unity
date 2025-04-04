@@ -2073,8 +2073,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   umbrellaObject: {fileID: 874278888}
-  umbrellaPreviewObject: {fileID: 7601746589961169636, guid: 3f882ffd29bd24829aac5ac598f17a72, type: 3}
-  shortPressDropPoint: {fileID: 1473204177}
+  umbrellaPreviewObject: {fileID: 0}
+  shortPressDropPoint: {fileID: 146021144}
   launchSpeed: 50
   accelerationTime: 0.3
   maxDistance: 25
@@ -2093,11 +2093,18 @@ MonoBehaviour:
   recallTriggerName: close
   chargeProgressBar: {fileID: 1579630951}
   landingMarker: {fileID: 534629719}
-  predictionSteps: 30
-  timeStep: 0.1
-  collisionMask:
+  landingMarkerOriginPoint: {fileID: 1473204177}
+  predictionSteps: 25
+  predictionTimeStep: 0.1
+  predictionCollisionMask:
     serializedVersion: 2
     m_Bits: 0
+  showDebugTrajectory: 1
+  trajectoryColor: {r: 1, g: 0, b: 0, a: 1}
+  useLinearProjection: 1
+  fixedProjectionHeight: 0
+  actualGravityScale: 1
+  useUnityPhysics: 1
   Charge: {fileID: 84127965}
   Fly: {fileID: 279503461}
   Close: {fileID: 1673832301}
@@ -32100,6 +32107,8 @@ SceneRoots:
   - {fileID: 1647597649}
   - {fileID: 1057255127}
   - {fileID: 146021148}
+  - {fileID: 794237035}
+  - {fileID: 682009630}
   - {fileID: 1783908258}
   - {fileID: 490930923}
   - {fileID: 1112799233}
@@ -32127,11 +32136,9 @@ SceneRoots:
   - {fileID: 1618620904}
   - {fileID: 15256884}
   - {fileID: 927699176}
-  - {fileID: 794237035}
   - {fileID: 84127966}
   - {fileID: 279503462}
   - {fileID: 764632762}
   - {fileID: 1673832302}
   - {fileID: 1211826909}
   - {fileID: 570015159}
-  - {fileID: 682009630}
