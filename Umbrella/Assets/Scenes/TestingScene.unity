@@ -505,6 +505,8 @@ MonoBehaviour:
         m_PostInfinity: 2
         m_RotationOrder: 4
     cameraHead: {fileID: 1574873192}
+    useCinemachine: 0
+    targetVirtualCamera: {fileID: 0}
     targetCamera: {fileID: 253536708}
     input_Look: Look
   movement:
