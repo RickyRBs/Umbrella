@@ -11,6 +11,7 @@ public class UmbrellaSystem : MonoBehaviour
     public GameObject umbrellaObject;       // 场上唯一的伞（初始时应为 Inactive）
     public GameObject umbrellaPreviewObject; // 新增的预览伞对象
     public GameObject shortPressDropPoint;    // 短按落伞位置
+    public GameObject shortPressLaunchPoint;  // 新增：短按发射起点（可选）
     public float launchSpeed = 50f;           // 发射时的最大速度
     public float accelerationTime = 0.3f;      // 动态加速时间
     public float maxDistance = 25f;           // 最大飞行距离
@@ -214,7 +215,20 @@ public class UmbrellaSystem : MonoBehaviour
     // 直接放下伞，不施加发射力度
     void DropUmbrella()
     {
-        umbrellaObject.transform.position = shortPressDropPoint.transform.position;
+        // 确定使用哪个位置放置伞
+        Vector3 dropPosition;
+        if (shortPressLaunchPoint != null)
+        {
+            // 使用新的自定义发射点
+            dropPosition = shortPressLaunchPoint.transform.position;
+        }
+        else
+        {
+            // 使用原来的短按放置点
+            dropPosition = shortPressDropPoint.transform.position;
+        }
+        
+        umbrellaObject.transform.position = dropPosition;
         umbrellaObject.SetActive(true);
         currentState = UmbrellaState.Hovering;
         TriggerUmbrellaAnim(launchTriggerName);
