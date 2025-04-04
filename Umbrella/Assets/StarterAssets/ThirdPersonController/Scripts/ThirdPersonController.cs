@@ -62,6 +62,7 @@ namespace StarterAssets
         [Header("Cinemachine")]
         [Tooltip("The follow target set in the Cinemachine Virtual Camera that the camera will follow")]
         public GameObject CinemachineCameraTarget;
+        public float lookSensitivity = 1.0f;
 
         [Tooltip("How far in degrees can you move the camera up")]
         public float TopClamp = 70.0f;
@@ -192,21 +193,19 @@ namespace StarterAssets
 
         private void CameraRotation()
         {
-            // if there is an input and camera position is not fixed
             if (_input.look.sqrMagnitude >= _threshold && !LockCameraPosition)
             {
-                //Don't multiply mouse input by Time.deltaTime;
+                // 如果当前设备是鼠标，则不乘 deltaTime（保持精确），否则乘以 deltaTime
                 float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
-
-                _cinemachineTargetYaw += _input.look.x * deltaTimeMultiplier;
-                _cinemachineTargetPitch += _input.look.y * deltaTimeMultiplier;
+                // 乘上你的灵敏度参数
+                _cinemachineTargetYaw += _input.look.x * lookSensitivity * deltaTimeMultiplier;
+                _cinemachineTargetPitch += _input.look.y * lookSensitivity * deltaTimeMultiplier;
             }
 
-            // clamp our rotations so our values are limited 360 degrees
+            // clamp 角度代码保持不变…
             _cinemachineTargetYaw = ClampAngle(_cinemachineTargetYaw, float.MinValue, float.MaxValue);
             _cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, BottomClamp, TopClamp);
 
-            // Cinemachine will follow this target
             CinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + CameraAngleOverride,
                 _cinemachineTargetYaw, 0.0f);
         }
@@ -279,69 +278,80 @@ namespace StarterAssets
             }
         }
 
+        // 在类的成员变量区域新增：
+        private int _jumpCount = 0;       // 当前已经跳跃的次数
+        public int maxJumps = 2;          // 最大允许跳跃次数（例如2：一次地面跳 + 一次空中二段跳）
+
         private void JumpAndGravity()
         {
             if (Grounded)
             {
-                // reset the fall timeout timer
+                // 重置跳跃计数，因为角色落地了
+                _jumpCount = 0;
                 _fallTimeoutDelta = FallTimeout;
 
-                // update animator if using character
                 if (_hasAnimator)
                 {
                     _animator.SetBool(_animIDJump, false);
                     _animator.SetBool(_animIDFreeFall, false);
                 }
 
-                // stop our velocity dropping infinitely when grounded
+                // 当在地面时，确保垂直速度不降得太低
                 if (_verticalVelocity < 0.0f)
                 {
                     _verticalVelocity = -2f;
                 }
 
-                // Jump
+                // 地面跳跃：如果检测到跳跃输入且跳跃超时计时器允许，则执行跳跃
                 if (_input.jump && _jumpTimeoutDelta <= 0.0f)
                 {
-                    // the square root of H * -2 * G = how much velocity needed to reach desired height
                     _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
-
-                    // update animator if using character
+                    _jumpCount++; // 第一次跳跃，_jumpCount 变为 1
                     if (_hasAnimator)
                     {
                         _animator.SetBool(_animIDJump, true);
                     }
+                    _input.jump = false; // 消耗跳跃输入
                 }
 
-                // jump timeout
                 if (_jumpTimeoutDelta >= 0.0f)
                 {
                     _jumpTimeoutDelta -= Time.deltaTime;
                 }
             }
-            else
+            else // 当角色不在地面时（空中状态）
             {
-                // reset the jump timeout timer
-                _jumpTimeoutDelta = JumpTimeout;
-
-                // fall timeout
-                if (_fallTimeoutDelta >= 0.0f)
+                // 空中允许二段跳：只要检测到跳跃输入且跳跃次数未满，就可以跳跃
+                if (_input.jump && _jumpCount < maxJumps)
                 {
-                    _fallTimeoutDelta -= Time.deltaTime;
+                    _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
+                    _jumpCount++; // 进行二段跳（或多段跳，取决于 maxJumps）
+                    if (_hasAnimator)
+                    {
+                        _animator.SetBool(_animIDJump, true);
+                    }
+                    _input.jump = false; // 消耗跳跃输入
                 }
                 else
                 {
-                    // update animator if using character
-                    if (_hasAnimator)
+                    // 在空中，不进行二段跳时，保持跳跃超时计时器（可选，不重置即可）
+                    // _jumpTimeoutDelta = JumpTimeout;  // 移除这行重置代码
+
+                    if (_fallTimeoutDelta >= 0.0f)
                     {
-                        _animator.SetBool(_animIDFreeFall, true);
+                        _fallTimeoutDelta -= Time.deltaTime;
+                    }
+                    else
+                    {
+                        if (_hasAnimator)
+                        {
+                            _animator.SetBool(_animIDFreeFall, true);
+                        }
                     }
                 }
-
-                // if we are not grounded, do not jump
-                _input.jump = false;
             }
 
-            // apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)
+            // 应用重力（确保不超过终端速度）
             if (_verticalVelocity < _terminalVelocity)
             {
                 _verticalVelocity += Gravity * Time.deltaTime;
