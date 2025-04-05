@@ -19,12 +19,24 @@ public class UmbrellaSystem : MonoBehaviour
     public GameObject umbrellaLaunchPoint;               // 玩家对象
     public GameObject PlayerforTranport; // 传送的目标对象
 
-    [Header("Animation")]
+    [Header("Umbrella Animation")]
     public List<Animator> umbrellaAnimators;    // 需要控制的 Animator 列表
 
     [Header("Animation Trigger Names")]
     public string launchTriggerName = "open";   // 开启动画的 Trigger 名称
     public string recallTriggerName = "close";    // 关闭动画的 Trigger 名称
+
+        // Tutorial 触发器（首次触发判断）
+    private bool firstDropTriggered = false;
+    private bool firstLaunchTriggered = false;
+    private bool firstRecallTriggered = false;
+    private bool firstTeleportTriggered = false;
+    [Header("TutorialAnimation")]
+    public List<Animator> TutorialAnimator;
+    public string Tutorial1 = "click";    // 第一次原地放下伞
+    public string Tutorial2 = "charge";   // 第一次发射伞
+    public string Tutorial3 = "back";     // 第一次收伞
+    public string Tutorial4 = "teleport"; // 第一次传送
 
     public Image chargeProgressBar;
 
@@ -51,7 +63,7 @@ public class UmbrellaSystem : MonoBehaviour
     // 蓄力相关变量
     private float chargeTimer = 0f;
     private bool isCharging = false;
-    private readonly float maxChargeTime = 3f;  // 最大蓄力时间
+    private readonly float maxChargeTime = 1.5f;  // 最大蓄力时间
 
     // 用于传送的协程引用
     private Coroutine teleportCoroutine = null;
@@ -119,18 +131,18 @@ public class UmbrellaSystem : MonoBehaviour
                 ShowLandingMarker(predictionOrigin, predictionVelocity, chargeRatio);
                 
                 // 使用新的稳定方法更新预览伞
-                UpdatePreviewUmbrella(predictionOrigin, predictionDir, chargeTimer >= 0.5f && isPreviewing);
+                UpdatePreviewUmbrella(predictionOrigin, predictionDir, chargeTimer >= 0.2f && isPreviewing);
             }
             if (Input.GetMouseButtonUp(0) && isCharging)
             {
                 
-                if (chargeTimer < 0.5f)
+                if (chargeTimer < 0.2f)
                 {
                     DropUmbrella();
                 }
                 else
                 {
-                    float chargeRatio = Mathf.Clamp01((chargeTimer - 0.5f) / (maxChargeTime - 0.5f));
+                    float chargeRatio = Mathf.Clamp01((chargeTimer - 0.2f) / (maxChargeTime - 0.5f));
                     LaunchUmbrella(chargeRatio);
                 }
                 isCharging = false;
@@ -232,6 +244,11 @@ public class UmbrellaSystem : MonoBehaviour
         umbrellaObject.SetActive(true);
         currentState = UmbrellaState.Hovering;
         TriggerUmbrellaAnim(launchTriggerName);
+        if (!firstDropTriggered)
+        {
+            TriggerTutorialAnim(Tutorial1);
+            firstDropTriggered = true;
+        }
         if (umbrellaRb != null)
         {
             umbrellaRb.linearVelocity = Vector3.zero;
@@ -281,6 +298,12 @@ public class UmbrellaSystem : MonoBehaviour
         maxDistanceThisShot = maxDistance * chargeRatio;
 
         TriggerUmbrellaAnim(launchTriggerName);
+        // 添加 Tutorial 触发（第一次发射伞）
+        if (!firstLaunchTriggered)
+        {
+            TriggerTutorialAnim(Tutorial2);
+            firstLaunchTriggered = true;
+        }
         if (landingMarker != null)
             landingMarker.SetActive(false);
         
@@ -303,8 +326,16 @@ public class UmbrellaSystem : MonoBehaviour
     IEnumerator CloseUmbrella()
     {
         currentState = UmbrellaState.Closing;
+
+        // 添加 Tutorial 触发（第一次收伞）
+        if (!firstRecallTriggered)
+        {
+            TriggerTutorialAnim(Tutorial3);
+            firstRecallTriggered = true;
+        }
+
         TriggerUmbrellaAnim(recallTriggerName);
-        yield return new WaitForSeconds(1.2f);
+        yield return new WaitForSeconds(0.3f);
         umbrellaObject.SetActive(false);
         currentState = UmbrellaState.Inactive;
     }
@@ -324,17 +355,21 @@ public class UmbrellaSystem : MonoBehaviour
         umbrellaRb.linearVelocity = targetVelocity;
     }
 
-    // 延迟1秒后传送玩家到伞的位置，传送时停止伞的运动，并播放收伞动画后关闭伞
+    // 延迟0.3秒后传送玩家到伞的位置，传送时停止伞的运动，并播放收伞动画后关闭伞
     IEnumerator TeleportAndCloseUmbrella()
     {
-        // 等待0.5秒，让玩家感觉到延迟
-        yield return new WaitForSeconds(0.5f);
-
+        // 等待0.3秒，让玩家感觉到延迟
+        yield return new WaitForSeconds(0.3f);
+        if (!firstTeleportTriggered)
+        {
+            TriggerTutorialAnim(Tutorial4);
+            firstTeleportTriggered = true;
+        }
         // 触发收伞动画
         TriggerUmbrellaAnim(recallTriggerName);
 
         // 再等待0.5秒，让动画有点反馈时间
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.3f);
 
         // 记录伞的位置（传送目标）
         Vector3 teleportPos = umbrellaObject.transform.position;
@@ -352,7 +387,7 @@ public class UmbrellaSystem : MonoBehaviour
         teleportCoroutine = null;
     }
 
-    // 触发所有 Animator 的指定 Trigger
+    // 触发所有 UmbrellaAnimator 的指定 Trigger
     void TriggerUmbrellaAnim(string triggerName)
     {
         foreach (Animator anim in umbrellaAnimators)
@@ -361,6 +396,18 @@ public class UmbrellaSystem : MonoBehaviour
             {
                 anim.SetTrigger(triggerName);
                 Debug.Log($"Triggered '{triggerName}' on {anim.gameObject.name}");
+            }
+        }
+    }
+    // 触发所有 TutorialAnimator 的指定 Trigger
+    void TriggerTutorialAnim(string triggerName)
+    {
+        foreach (Animator anim in TutorialAnimator)
+        {
+            if (anim != null)
+            {
+                anim.SetTrigger(triggerName);
+                Debug.Log($"Tutorial triggered '{triggerName}' on {anim.gameObject.name}");
             }
         }
     }
