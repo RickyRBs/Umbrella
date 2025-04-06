@@ -55,6 +55,17 @@ public class UmbrellaSystem : MonoBehaviour
     public float actualGravityScale = 1.0f;    // 实际发射时的重力比例调节
     public bool useUnityPhysics = true;        // 是否使用Unity内置物理引擎
 
+    [Header("Collision Settings")]
+    public bool stabilizeAfterCollision = true;  // 是否在碰撞后稳定伞的位置
+    public float collisionStabilizeDelay = 0.05f; // 减少延迟，使反应更快速
+    public bool maintainHeight = true;           // 碰撞后是否保持高度不变
+    public LayerMask collisionDetectionMask;     // 用于检测碰撞的层
+    public bool switchToHoveringOnCollision = true; // 新增：碰撞后直接切换到悬浮状态
+    public bool useFullStabilization = true;     // 新增：使用完全稳定化（禁用物理）
+
+    private bool hasCollided = false;            // 本次发射是否已发生碰撞
+    private Coroutine stabilizeCoroutine = null; // 稳定化协程引用
+
     private UmbrellaState currentState = UmbrellaState.Inactive;
     private Rigidbody umbrellaRb;
     private Vector3 launchOrigin;
@@ -94,6 +105,17 @@ public class UmbrellaSystem : MonoBehaviour
             umbrellaPreviewObject.SetActive(false); // 新增行，隐藏预览伞
             currentState = UmbrellaState.Inactive;
             lastPosition = umbrellaObject.transform.position;
+            
+            // 添加碰撞检测组件
+            if (umbrellaRb != null && !umbrellaObject.GetComponent<UmbrellaCollisionHandler>())
+            {
+                UmbrellaCollisionHandler collisionHandler = umbrellaObject.AddComponent<UmbrellaCollisionHandler>();
+                collisionHandler.umbrellaSystem = this;
+                
+                // 启用连续碰撞检测，确保不会错过高速碰撞
+                umbrellaRb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+                Debug.Log("已启用连续碰撞检测，确保高速下不错过碰撞");
+            }
         }
         else
         {
@@ -261,6 +283,15 @@ public class UmbrellaSystem : MonoBehaviour
     // 发射伞：将伞传送到玩家位置后，根据摄像机方向施加发射力度
     void LaunchUmbrella(float chargeRatio)
     {
+        // 重置碰撞状态
+        hasCollided = false;
+        if (stabilizeCoroutine != null)
+        {
+            StopCoroutine(stabilizeCoroutine);
+            stabilizeCoroutine = null;
+        }
+        
+        // 原有代码保持不变
         Fly.Play();
         Open.Play();
         
@@ -632,6 +663,114 @@ public class UmbrellaSystem : MonoBehaviour
                     umbrellaPreviewObject.transform.rotation = Quaternion.LookRotation(direction);
                 }
             }
+        }
+    }
+
+    // 新增方法：处理伞的碰撞
+    public void HandleUmbrellaCollision(Collision collision)
+    {
+        // 为调试添加日志
+        Debug.Log($"伞碰撞检测触发! 碰撞对象: {collision.gameObject.name}");
+        
+        if (currentState == UmbrellaState.Launched)
+        {
+            hasCollided = true;
+            
+            // 如果启用了碰撞后稳定化
+            if (stabilizeAfterCollision)
+            {
+                // 立即执行一些稳定措施，防止下落开始
+                if (umbrellaRb != null)
+                {
+                    Vector3 velocity = umbrellaRb.linearVelocity;
+                    
+                    // 立即减小Y方向下降速度，避免等待延迟期间下落
+                    if (velocity.y < 0)
+                    {
+                        velocity.y = 0;
+                        umbrellaRb.linearVelocity = velocity;
+                    }
+                    
+                    // 如果设置了碰撞后直接切换到悬停，立即执行
+                    if (switchToHoveringOnCollision)
+                    {
+                        StopUmbrella();
+                        return; // 已经完全稳定，不需要继续执行协程
+                    }
+                }
+                
+                // 延迟一小段时间后稳定伞
+                if (stabilizeCoroutine != null)
+                    StopCoroutine(stabilizeCoroutine);
+                    
+                stabilizeCoroutine = StartCoroutine(StabilizeAfterCollision());
+            }
+        }
+    }
+    
+    // 优化碰撞后稳定伞的位置的协程
+    private IEnumerator StabilizeAfterCollision()
+    {
+        // 等待短暂时间让物理系统处理完碰撞反弹
+        yield return new WaitForSeconds(collisionStabilizeDelay);
+        
+        if (umbrellaRb != null && umbrellaObject.activeSelf)
+        {
+            Debug.Log("执行伞的稳定化");
+            
+            if (useFullStabilization)
+            {
+                // 完全稳定：停止所有物理模拟，转为悬浮状态
+                umbrellaRb.linearVelocity = Vector3.zero;
+                umbrellaRb.angularVelocity = Vector3.zero;
+                umbrellaRb.isKinematic = true;
+                currentState = UmbrellaState.Hovering;
+                Debug.Log("伞已完全稳定，切换到悬浮状态");
+            }
+            else if (maintainHeight)
+            {
+                // 保持当前高度，消除所有Y方向速度
+                Vector3 velocity = umbrellaRb.linearVelocity;
+                velocity.y = 0; // 移除Y方向速度，防止下降
+                umbrellaRb.linearVelocity = velocity;
+                Debug.Log("伞已保持高度稳定");
+            }
+            else
+            {
+                // 仅减小Y方向下降速度，模拟伞降
+                Vector3 velocity = umbrellaRb.linearVelocity;
+                if (velocity.y < 0)
+                    velocity.y *= 0.1f; // 进一步减小下降速度
+                umbrellaRb.linearVelocity = velocity;
+                Debug.Log("伞下降速度已减小");
+            }
+        }
+    }
+}
+
+// 新增类：伞的碰撞处理组件
+public class UmbrellaCollisionHandler : MonoBehaviour
+{
+    [HideInInspector]
+    public UmbrellaSystem umbrellaSystem;
+    
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (umbrellaSystem != null)
+        {
+            umbrellaSystem.HandleUmbrellaCollision(collision);
+        }
+    }
+    
+    // 添加持续碰撞检测，确保不错过任何碰撞
+    private void OnCollisionStay(Collision collision)
+    {
+        // 如果系统显示伞正在下落，则再次触发碰撞处理
+        if (umbrellaSystem != null && 
+            umbrellaSystem.GetComponent<Rigidbody>() != null && 
+            umbrellaSystem.GetComponent<Rigidbody>().linearVelocity.y < 0)
+        {
+            umbrellaSystem.HandleUmbrellaCollision(collision);
         }
     }
 }

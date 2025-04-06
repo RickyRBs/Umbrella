@@ -1910,6 +1910,14 @@ MonoBehaviour:
   fixedProjectionHeight: 0
   actualGravityScale: 1
   useUnityPhysics: 1
+  stabilizeAfterCollision: 1
+  collisionStabilizeDelay: 0.2
+  maintainHeight: 1
+  collisionDetectionMask:
+    serializedVersion: 2
+    m_Bits: 0
+  switchToHoveringOnCollision: 1
+  useFullStabilization: 1
   Charge: {fileID: 0}
   Fly: {fileID: 0}
   Close: {fileID: 0}
@@ -4550,6 +4558,18 @@ PrefabInstance:
     - target: {fileID: 706265251621936105, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
       propertyPath: m_LocalPosition.z
       value: -5.779999
+      objectReference: {fileID: 0}
+    - target: {fileID: 763236347496998617, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
+      propertyPath: m_Mass
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 763236347496998617, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
+      propertyPath: m_ImplicitCom
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 763236347496998617, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
+      propertyPath: m_ImplicitTensor
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2514724280323973205, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
       propertyPath: player

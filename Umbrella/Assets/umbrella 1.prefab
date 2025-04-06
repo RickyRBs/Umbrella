@@ -995,6 +995,7 @@ MonoBehaviour:
   - {fileID: 6615402461656138409}
   - {fileID: 790399454330405796}
   triggerName: open
+  SceneManager: {fileID: 0}
 --- !u!95 &7251809898003030045
 Animator:
   serializedVersion: 7
@@ -1240,8 +1241,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8431298983776941633}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.7109165, z: 0, w: 0.7032764}
-  m_LocalPosition: {x: -298.636, y: 12.332137, z: -8.516212}
+  m_LocalRotation: {x: 0, y: -0.8651313, z: 0, w: 0.5015454}
+  m_LocalPosition: {x: -322.43414, y: 0.97595835, z: -6.244049}
   m_LocalScale: {x: 0.09, y: 0.09, z: 0.09}
   m_ConstrainProportionsScale: 1
   m_Children:
