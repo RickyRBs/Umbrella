@@ -213,7 +213,7 @@ Material:
     - _Glossiness: 0
     - _GlossyReflections: 0
     - _Glow_Edge_Width: 1
-    - _HighlightColorPower: 1
+    - _HighlightColorPower: 2
     - _LigIgnoYNorDir: 0
     - _LightAffectOutlineColor: 0
     - _LightAffectRimLightColor: 0
@@ -352,7 +352,7 @@ Material:
     - _GlossColor: {r: 1, g: 1, b: 1, a: 1}
     - _Glow_Color: {r: 1, g: 1, b: 1, a: 1}
     - _HighlightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _MainColor: {r: 1, g: 0.7011057, b: 0.6650944, a: 1}
+    - _MainColor: {r: 0.38679248, g: 0.33948445, b: 0.33388218, a: 1}
     - _ObjPosi: {r: 0, g: 0, b: 0, a: 0}
     - _ObjectForward: {r: 0, g: 0, b: 0, a: 0}
     - _ObjectRight: {r: 0, g: 0, b: 0, a: 0}
