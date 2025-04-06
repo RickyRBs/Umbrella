@@ -2049,6 +2049,8 @@ MonoBehaviour:
   Fly: {fileID: 0}
   Close: {fileID: 0}
   Open: {fileID: 0}
+  crosshair: {fileID: 0}
+  chargeBar: {fileID: 0}
 --- !u!114 &146021150
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5079,6 +5081,14 @@ PrefabInstance:
       propertyPath: m_audioClip
       value: 
       objectReference: {fileID: 8300000, guid: 24d87c18197734ffd8913923f824e86f, type: 3}
+    - target: {fileID: 5206807168310344828, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
+      propertyPath: chargeBar
+      value: 
+      objectReference: {fileID: 2048366345}
+    - target: {fileID: 5206807168310344828, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
+      propertyPath: crosshair
+      value: 
+      objectReference: {fileID: 1081913964}
     - target: {fileID: 5206807168310344828, guid: 6434e32263c014bfbbc6b5cc8f67f129, type: 3}
       propertyPath: chargeProgressBar
       value: 

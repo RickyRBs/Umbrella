@@ -93,6 +93,10 @@ public class UmbrellaSystem : MonoBehaviour
     private bool isPreviewing = false; // 新增字段
     private float previewChargeRatio = 0f; // 新增字段
 
+    [Header("UI Elements")]
+    public GameObject crosshair; // 准心对象
+    public GameObject chargeBar; // 蓄力条对象
+
     void Start()
     {
         if (umbrellaObject != null)
@@ -237,6 +241,14 @@ public class UmbrellaSystem : MonoBehaviour
         else
         {
             isUmbrellaMoving = false;
+        }
+
+        // 根据伞的状态控制准心和蓄力条的显示
+        if (crosshair != null && chargeBar != null)
+        {
+            bool isUmbrellaActive = umbrellaObject.activeSelf;
+            crosshair.SetActive(!isUmbrellaActive);
+            chargeBar.SetActive(!isUmbrellaActive);
         }
     }
 
