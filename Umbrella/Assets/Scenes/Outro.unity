@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 20873488}
   - component: {fileID: 20873487}
   - component: {fileID: 20873486}
+  - component: {fileID: 20873489}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -211,6 +212,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &20873489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 20873485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
 --- !u!1 &416172614
 GameObject:
   m_ObjectHideFlags: 0
@@ -268,7 +313,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 7a68fe55c103e4a7e8981ee214f54606, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -533,7 +578,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a0269267ffebc42f3804a46aa4e49074, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nextSceneName: Sc1
+  nextSceneName: TitlePage
 --- !u!4 &1017050894
 Transform:
   m_ObjectHideFlags: 0
@@ -790,7 +835,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43223bddbd433418f8ae82354368e405, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inkJSONAsset: {fileID: 4900000, guid: 31e65ba2f06004e8d903068c685b477a, type: 3}
+  inkJSONAsset: {fileID: 4900000, guid: 388e4ff70b6ea484da6810cbe5e56289, type: 3}
   nameText: {fileID: 1789980275}
   storyText: {fileID: 1395095925}
   continueButton: {fileID: 1099499801}
@@ -1123,6 +1168,10 @@ PrefabInstance:
     - target: {fileID: 1218789627059729466, guid: bef8144f3528b4c91b8b72d568d3270d, type: 3}
       propertyPath: m_Name
       value: TextBox
+      objectReference: {fileID: 0}
+    - target: {fileID: 7119939335251597723, guid: bef8144f3528b4c91b8b72d568d3270d, type: 3}
+      propertyPath: m_Interactable
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7119939335251597723, guid: bef8144f3528b4c91b8b72d568d3270d, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
