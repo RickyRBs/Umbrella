@@ -12524,7 +12524,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3bf20970ebe4c447396b8d8a89eb908b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hintText: {fileID: 0}
+  hintText: {fileID: 1427675220}
   sceneToLoad: Outro
   triggerKey: 101
 --- !u!136 &961967641

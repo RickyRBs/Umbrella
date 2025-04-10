@@ -18,12 +18,23 @@ public class LinearInkController : MonoBehaviour
     public SimpleSceneManager SceneManager;
 
     private Story story;
+    private bool isWaitingForInput = true; // 新增字段，防止多次触发
 
     void Start()
     {
         story = new Story(inkJSONAsset.text);
         ShowNextLine();
         continueButton.onClick.AddListener(ShowNextLine);
+    }
+
+    void Update()
+    {
+        // 检测任意按键按下，并确保只触发一次
+        if (Input.anyKeyDown && isWaitingForInput)
+        {
+            isWaitingForInput = false; // 标记为已处理输入
+            ShowNextLine();
+        }
     }
 
     void ShowNextLine()
@@ -63,6 +74,8 @@ public class LinearInkController : MonoBehaviour
             }
             continueButton.interactable = false;
         }
+
+        isWaitingForInput = true; // 允许下一次输入
     }
 
     void HandleTag(string tag)
